@@ -19,7 +19,7 @@ pub fn generate(len: usize) -> String {
 }
 
 pub async fn download(mut url: String, filename: String) -> Result<()> { 
-    url.remove_matches("\"");
+    url.remove_matches("\""); // Boosty API provides image URL that looks like "url", not like just url
     println!("Downloading from {}", url.bright_blue()); 
     let resp = reqwest::get(url).await.expect("request failed");
     let mut out = File::create(filename).expect("failed to create file");
