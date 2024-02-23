@@ -11,20 +11,24 @@ mod utils;
 struct Args {
     #[arg(short, long)]
     blog: String,
+
+    #[arg(short, long)]
+    path: Option<String>
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
-    println!("Downloading all content from {}", args.blog.purple());
+    let path = if args.path.is_some() { args.path.unwrap() } else { format!("img/{}", args.blog.clone()) };
+    println!("Downloading all content from {} to {}", args.blog.purple(), path.green());
     let response = request::fetch_posts(args.blog.clone()).await?;
-    std::fs::create_dir_all(format!("img/{}", args.blog))?;
+    std::fs::create_dir_all(path.clone())?;
     for i in response.iter() {
         for teaser in &i.teaser {
             if teaser.url.is_some() {
                 utils::download(
                     teaser.url.clone().unwrap(),
-                    format!("img/{}/{}.png", args.blog, utils::generate(16))).await?;
+                    format!("{}/{}.png", path, utils::generate(16))).await?;
             }
         }
     }
