@@ -18,10 +18,11 @@ pub fn generate(len: usize) -> String {
     iter::repeat_with(one_char).take(len).collect()
 }
 
-pub async fn download(url: String, filename: String) -> Result<()> { 
-    println!("Downloading from {}", url.bright_blue()); 
+pub async fn download(url: String, path: String) -> Result<()> {
+    let file = format!("{}/{}.png", path, url.split_once("image/").unwrap().1.split_once("?").unwrap().0);
+    println!("Downloading from {} to {}", url.bright_blue(), file.green()); 
     let resp = reqwest::get(url).await.expect("request failed");
-    let mut out = File::create(filename).expect("failed to create file");
+    let mut out = File::create(file).expect("failed to create file");
     std::io::copy(&mut resp.bytes().await.unwrap().as_ref(), &mut out).expect("failed to copy content");
 
     Ok(())

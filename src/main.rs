@@ -28,7 +28,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             if teaser.url.is_some() {
                 utils::download(
                     teaser.url.clone().unwrap(),
-                    format!("{}/{}.png", path, utils::generate(16))).await?;
+                    path.clone()).await?;
             }
         }
     }
