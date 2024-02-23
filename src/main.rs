@@ -1,5 +1,5 @@
 #![feature(string_remove_matches)]
-use std::io::Error;
+use std::{error::Error, process::exit};
 
 use clap::Parser;
 use colored::Colorize;
@@ -15,20 +15,20 @@ struct Args {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Error> {
+async fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
     println!("Downloading all content from {}", args.blog.purple());
-    let response = boosty::request::fetch_posts(args.blog).await;
-    
-    let value = response.unwrap();
-    let data = &value["data"].as_array().unwrap();
-    for i in 0..data.len() {
-        let url = &data[i]["teaser"][0]["url"];
-        if !url.is_null() {
-            let _ = utils::download(
-                url.to_string(),
-                format!("{}/{}.png", "img", utils::generate(16))).await;
+    let response = boosty::request::fetch_posts(args.blog.clone()).await?;
+    std::fs::create_dir_all(format!("img/{}", args.blog))?;
+    for i in response.iter() {
+        for teaser in &i.teaser {
+            if teaser.url.is_some() {
+                utils::download(
+                    teaser.url.clone().unwrap(),
+                    format!("img/{}/{}.png", args.blog, utils::generate(16))).await?;
+            }
         }
     }
+    
     Ok(())
 }
