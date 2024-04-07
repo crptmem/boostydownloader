@@ -1,6 +1,7 @@
 boostydownloader
 ================
-A simple application to bulk-download content from Boosty
+A simple application to bulk-download content from Boosty.
+Made with my own library boosty-rs (https://github.com/crptmem/boosty-rs)
 
 Build
 =====
