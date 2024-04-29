@@ -1,0 +1,7 @@
+1. Download Cargo.toml, and all of the src files
+2. Put them in correct order in folder
+3. Open terminal (Windows CMD), go to the folder (with cd command)
+4. Write
+$ cargo add boosty-rs
+$ cargo build
+$ cargo run -- --blog (insert blog here)
