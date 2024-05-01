@@ -2,8 +2,9 @@
 name = "boostydownload"
 version = "0.1.2"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+license = "MIT"
+repository = "https://github.com/crptmem/boostydownloader.git"
+description = "A simple application to bulk-download content from Boosty"
 
 [dependencies]
 boosty-rs = "0.1.11"
