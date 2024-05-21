@@ -3,10 +3,13 @@ boostydownloader
 A simple application to bulk-download content from Boosty.
 Made with my own library boosty-rs (https://github.com/crptmem/boosty-rs)
 
-Build
+Installation
 =====
-  $ git clone https://github.com/crptmem/boostydownloader.git && cd boostydownloader
-  $ cargo build
+  $ cargo install boostydownload
+
+Usage
+=====
+  $ boostydownload --blog BLOG_NAME
 
 Obtaining access token
 ======================
