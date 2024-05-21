@@ -1,6 +1,6 @@
 [package]
 name = "boostydownload"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/crptmem/boostydownloader.git"
@@ -14,8 +14,6 @@ error-chain = "0.12.4"
 log = { version = "0.4.20", features = ["max_level_trace", "max_level_info", "max_level_error"] }
 rand = "0.8.5"
 reqwest = { version = "0.11.24", features = ["blocking", "json"] }
-rusty_ytdl = { version = "0.7.2", features = ["ffmpeg"] }
 serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.114"
 tokio = { version = "1.36.0", features = ["full"] }
-ytd-rs = { version = "0.1.7", features = ["yt-dlp"] }
