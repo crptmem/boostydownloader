@@ -1,5 +1,5 @@
 use colored::Colorize;
-use std::{borrow::Borrow, fmt::format, fs::File, path::{Path, PathBuf}};
+use std::{fs::File, path::Path};
 use error_chain::error_chain;
 //use ytd_rs::{YoutubeDL, Arg};
 
