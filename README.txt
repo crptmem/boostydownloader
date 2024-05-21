@@ -10,7 +10,8 @@ Installation
 Usage
 =====
   $ boostydownload --blog BLOG_NAME
-
+By default content is downloaded to `current_directory/img` like
+`/home/corruptmemory/img`. You can change path by `--path` argument.
 Obtaining access token
 ======================
 Go to https://boosty.to, open developer tools in your browser,
