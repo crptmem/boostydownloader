@@ -36,7 +36,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                             content.clone().url.clone().unwrap(),
                             path.clone()).await?;
                     }
-                    if content.url.is_some() && content.content_type.clone() == "ok_video" {
+                    if content.url.is_some() && content.content_type.clone() == "ok_video" && content.url.clone().unwrap().contains("id") {
                         if content.player_urls.is_some() {
                             let player_urls = content.player_urls.clone().unwrap();
                             for player in player_urls {
