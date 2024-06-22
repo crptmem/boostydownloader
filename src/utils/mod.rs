@@ -13,11 +13,9 @@ error_chain! {
 pub async fn download(url: String, path: String) -> Result<()> {
     let mut file = String::new();
     if url.contains("?") {
-    file = format!("{}/{}.png", path, url.split_once("image/").unwrap().1.split_once("?").unwrap().0);
-    }
-    else
-    {
-    file = format!("{}/{}.png", path, url.split_once("image/").unwrap().1);
+        file = format!("{}/{}.png", path, url.split_once("image/").unwrap().1.split_once("?").unwrap().0);
+    } else {
+        file = format!("{}/{}.png", path, url.split_once("image/").unwrap().1);
     }
     if Path::new(&file).exists() {
         println!("Skipping {} because it's already downloaded", file.bright_blue());
