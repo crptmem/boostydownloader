@@ -22,8 +22,3 @@ jobs:
       id: publish-crates
       with:
           registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-    - name: if my-crate published
-      if: fromJSON(steps.publish-crates.outputs.published).*
-      run: |
-          LIST="${{ join(fromJSON(steps.publish-crates.outputs.published).*.name, ', ')) }}"
-          echo "Published crates: $LIST"
