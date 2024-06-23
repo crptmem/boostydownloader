@@ -1,14 +1,15 @@
 [package]
 name = "boostydownload"
-version = "0.2.3"
+version = "0.2.4"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/crptmem/boostydownloader.git"
 description = "A simple application to bulk-download content from Boosty"
 
 [dependencies]
-boosty-rs = "0.2.0"
+boosty-rs = "0.3.0"
 clap = { version = "4.5.1", features = ["derive"] }
+clap-verbosity-flag = "2.2.0"
 colored = "2.1.0"
 error-chain = "0.12.4"
 log = { version = "0.4.20", features = ["max_level_trace", "max_level_info", "max_level_error"] }

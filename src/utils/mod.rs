@@ -1,7 +1,6 @@
 use colored::Colorize;
 use std::{fs::File, path::Path};
 use error_chain::error_chain;
-//use ytd_rs::{YoutubeDL, Arg};
 
 error_chain! {
     foreign_links {
@@ -11,12 +10,11 @@ error_chain! {
 }
 
 pub async fn download(url: String, path: String) -> Result<()> {
-    let mut file = String::new();
-    if url.contains("?") {
-        file = format!("{}/{}.png", path, url.split_once("image/").unwrap().1.split_once("?").unwrap().0);
+    let file: String = if url.contains("?") {
+        format!("{}/{}.png", path, url.split_once("image/").unwrap().1.split_once("?").unwrap().0)
     } else {
-        file = format!("{}/{}.png", path, url.split_once("image/").unwrap().1);
-    }
+        format!("{}/{}.png", path, url.split_once("image/").unwrap().1)
+    };
     if Path::new(&file).exists() {
         println!("Skipping {} because it's already downloaded", file.bright_blue());
         return Ok(());
