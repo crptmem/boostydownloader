@@ -34,7 +34,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     if args.debug {
         let response_raw = request::fetch_posts_raw(args.blog.clone(), auth.clone()).await?;
-        println!("API response: {:#?}", response_raw)
+        println!("API response: {:#?}", response_raw);
     }
 
     std::fs::create_dir_all(path.clone())?;
