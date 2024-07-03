@@ -20,6 +20,10 @@ struct Args {
     access_token: Option<String>,
 
     #[arg(short, long)]
+    #[clap(default_value_t = 300)]
+    limit: i64,
+
+    #[arg(short, long)]
     #[clap(default_value_t = false)]
     debug: bool
 }
@@ -30,10 +34,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let auth: Option<Auth> = if args.access_token.is_some() { Some(Auth::new(args.access_token.unwrap())) } else { None };
     let path = if args.path.is_some() { args.path.unwrap() } else { format!("img/{}", args.blog.clone()) };
     println!("Downloading all pictures from {} to {}", args.blog.purple(), path.green());
-    let response = request::fetch_posts(args.blog.clone(), auth.clone()).await?;
+    let response = request::fetch_posts(args.blog.clone(), args.limit, auth.clone()).await?;
+    println!("Total count: {}", response.len());
 
     if args.debug {
-        let response_raw = request::fetch_posts_raw(args.blog.clone(), auth.clone()).await?;
+        let response_raw = request::fetch_posts_raw(args.blog.clone(), args.limit, auth.clone()).await?;
         println!("API response: {:#?}", response_raw);
     }
 
