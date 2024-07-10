@@ -13,11 +13,11 @@ Usage
  Boosty:
   $ boostydownload boosty --blog <BLOG_NAME>
   Without authorization:
-    $ boostydownload --blog USERNAME
+    $ boostydownload boosty --blog USERNAME
   With authorization:
-    $ boostydownload --blog USERNAME --access-token ACCESS_TOKEN
+    $ boostydownload boosty --blog USERNAME --access-token ACCESS_TOKEN
   If requested blog have more than 300 posts:
-    $ boostydownload --blog USERNAME --limit POSTS_COUNT
+    $ boostydownload boosty --blog USERNAME --limit POSTS_COUNT
  Gelbooru:
   $ boostydownload gelbooru --url <SITE_ROOT_URL> --tags <TAGS> --proxy [PROXY]
 By default content is downloaded to `$PWD/img`. You can change path by `--path` argument.
