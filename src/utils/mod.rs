@@ -9,7 +9,7 @@ error_chain! {
     }
 }
 
-pub async fn download_img_gelbooru(url: String, img_name: String, path: String, proxy: Option<reqwest::Proxy>) -> Result<()> {
+pub async fn download_img_gelbooru(url: String, img_name: String, path: String, proxy: Option<&str>) -> Result<()> {
     let file = format!("{path}/{img_name}");
     if Path::new(&file).exists() {
         println!("Skipping {} because it's already downloaded", file.bright_blue());
@@ -19,9 +19,9 @@ pub async fn download_img_gelbooru(url: String, img_name: String, path: String, 
     if !Path::new(&path).exists() {
         fs::create_dir(path).unwrap()
     }
-    if let Some(proxy_reqwest) = proxy {
+    if let Some(proxy) = proxy {
         let client = reqwest::Client::builder()
-            .proxy(proxy_reqwest)
+            .proxy(reqwest::Proxy::all(proxy)?)
             .build()?;
         let resp = client.get(url).send().await.expect("request failed");
         let mut out = File::create(file).expect("failed to create file");

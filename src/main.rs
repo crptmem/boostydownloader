@@ -37,12 +37,8 @@ enum Commands {
         /// Set limit of maximum images to download
         limit: i64,
     },
-    /// Subcommand to download from Gelbooru-powered site
+    /// Subcommand to download from Gelbooru
     Gelbooru {
-        #[arg(short, long)]
-        /// Site URL
-        url: String,
-
         #[arg(short, long)]
         #[clap(default_value_t = String::from("img"))]
         /// Path where images will be saved
@@ -58,7 +54,7 @@ enum Commands {
         pid: i64,
 
         #[arg(long)]
-        /// Proxy if requested resource is blocked in your country (SOCKS or HTTP)
+        /// Proxy if Gelbooru is blocked in your country (SOCKS or HTTP)
         proxy: Option<String>
     }
 }
@@ -70,12 +66,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
         Commands::Boosty { blog, path, access_token, limit } => {
             download_boosty(blog, path, access_token, limit).await;
         },
-        Commands::Gelbooru { url, path, tags, pid, proxy } => {
-            if let Some(proxy_url) = proxy {
-                let proxy_reqwest = reqwest::Proxy::all(proxy_url).unwrap();
-                download_gelbooru(url, tags, pid, path, Some(proxy_reqwest)).await;
+        Commands::Gelbooru { path, tags, pid, proxy } => {
+            if let Some(proxy) = proxy {
+                download_gelbooru(tags, pid, path, Some(&proxy)).await;
             } else {
-                download_gelbooru(url, tags, pid, path, None).await;
+                download_gelbooru(tags, pid, path, None).await;
             }
            
         }
@@ -84,20 +79,21 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-async fn download_gelbooru(url: String, tags: String, pid: i64, path: String, proxy: Option<reqwest::Proxy>) {
+async fn download_gelbooru(tags: String, page: i64, path: String, proxy: Option<&str>) {
     println!("Downloading all pictures from tags {} to {}", tags.purple(), path.green());
-    let response = imgdl_rs::gelbooru::request::fetch_posts(url.clone(), Some(tags.clone()), Some(pid), proxy.clone()).await.unwrap();
-    for i in response.iter() {
-        let download_url = format!("{url}/images/{}/{}", i.directory, i.image);
+    let client = imgdl_rs::gelbooru::request::Client::new(proxy);
+    let response = client.fetch_posts(&tags, page).await.unwrap();
+    for i in response.iter() { 
         utils::download_img_gelbooru(
-            download_url, i.image.clone(), format!("{path}/{tags}/"), proxy.clone()).await.unwrap();
+            i.file_url.clone(), i.image.clone(), format!("{path}/{tags}/"), proxy).await.unwrap();
     }
 }
 
 async fn download_boosty(blog: String, path: String, access_token: Option<String>, limit: i64) {
     let auth = access_token.map(Auth::new);
     println!("Downloading all pictures from {} to {}", blog.purple(), path.green());
-    let response = imgdl_rs::boosty::request::fetch_posts(blog.clone(), limit, auth.clone()).await.unwrap();
+    let response = imgdl_rs::boosty::request::Client::fetch_posts(
+        blog.clone(), limit, auth.clone()).await.unwrap();
     println!("Total count: {}, limit: {}", response.len(), limit);
 
     std::fs::create_dir_all(path.clone()).unwrap();

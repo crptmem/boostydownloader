@@ -7,7 +7,7 @@ repository = "https://github.com/crptmem/boostydownloader.git"
 description = "A simple application to bulk-download content from Boosty"
 
 [dependencies]
-imgdl-rs = "0.0.1"
+imgdl-rs = "1.0.0"
 clap = { version = "4.5.1", features = ["derive"] }
 colored = "2.1.0"
 error-chain = "0.12.4"
