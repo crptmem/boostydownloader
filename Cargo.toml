@@ -1,6 +1,6 @@
 [package]
 name = "boostydownload"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/crptmem/boostydownloader.git"
