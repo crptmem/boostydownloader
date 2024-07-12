@@ -1,7 +1,6 @@
 boostydownloader
 ================
-A simple application to bulk-download content from Boosty and Gelbooru-powered
-sites.
+A simple application to bulk-download content from Boosty and Gelbooru.
 Made with my own library imgdl-rs (https://github.com/crptmem/imgdl-rs)
 
 Installation

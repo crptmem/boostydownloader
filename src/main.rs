@@ -1,10 +1,16 @@
-use std::error::Error;
+use std::{error::Error, fs, path::Path};
 use imgdl_rs::boosty::auth::Auth;
+
+use futures::{future::join_all, stream::FuturesUnordered};
+use futures::Future;
+use std::pin::Pin;
 
 use clap::{Parser, Subcommand};
 use colored::Colorize;
 
 mod utils;
+
+type BoxedFuture = Pin<Box<dyn Future<Output = Result<(), utils::Error>> + Send>>;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -50,8 +56,13 @@ enum Commands {
 
         #[arg(long)]
         #[clap(default_value_t = 0)]
-        /// Page id
-        pid: i64,
+        /// Page
+        page: i64,
+
+        #[arg(long)]
+        #[clap(default_value_t = false)]
+        /// Download images from all pages
+        all: bool,
 
         #[arg(long)]
         /// Proxy if Gelbooru is blocked in your country (SOCKS or HTTP)
@@ -66,26 +77,34 @@ async fn main() -> Result<(), Box<dyn Error>> {
         Commands::Boosty { blog, path, access_token, limit } => {
             download_boosty(blog, path, access_token, limit).await;
         },
-        Commands::Gelbooru { path, tags, pid, proxy } => {
-            if let Some(proxy) = proxy {
-                download_gelbooru(tags, pid, path, Some(&proxy)).await;
-            } else {
-                download_gelbooru(tags, pid, path, None).await;
-            }
-           
+        Commands::Gelbooru { path, tags, page, all, proxy } => {
+            download_gelbooru(tags, page, path, all, proxy).await;
         }
     }
 
     Ok(())
 }
 
-async fn download_gelbooru(tags: String, page: i64, path: String, proxy: Option<&str>) {
+async fn download_gelbooru(tags: String, page: i64, path: String, all: bool, proxy: Option<String>) {
+    let path = format!("{path}/{tags}");
     println!("Downloading all pictures from tags {} to {}", tags.purple(), path.green());
-    let client = imgdl_rs::gelbooru::request::Client::new(proxy);
-    let response = client.fetch_posts(&tags, page).await.unwrap();
-    for i in response.iter() { 
-        utils::download_img_gelbooru(
-            i.file_url.clone(), i.image.clone(), format!("{path}/{tags}/"), proxy).await.unwrap();
+    let client = imgdl_rs::gelbooru::request::Client::new(proxy.as_deref()); 
+    let attributes = client.fetch_attributes(&tags, page).await.unwrap();
+    let page_count = if all { (attributes.count / 100) as i64 } // Divide total post count by post limit per
+                                                                // page (100)
+    else { 1 };
+
+    println!("Total pages: {page_count} (use `--all` flag to download from all pages)");
+    if !Path::new(&path).exists() {
+        fs::create_dir(&path).unwrap()
+    }
+
+    for p in 0..page_count {
+        let response = client.fetch_posts(&tags, p).await.unwrap();
+        for i in response.iter() { 
+            utils::download_img_gelbooru(
+            i.file_url.clone(), i.image.clone(), path.clone(), proxy.clone()).await.unwrap();
+        }
     }
 }
 
@@ -96,34 +115,44 @@ async fn download_boosty(blog: String, path: String, access_token: Option<String
         blog.clone(), limit, auth.clone()).await.unwrap();
     println!("Total count: {}, limit: {}", response.len(), limit);
 
-    std::fs::create_dir_all(path.clone()).unwrap();
-    for i in response.iter() {
-        if let Some(data) = i.data.clone() { 
-            for content in data.iter() {
-                if content.url.is_some() && content.url.clone().unwrap().starts_with("https://images.boosty.to/image/") {
-                    utils::download_img_boosty(
-                        content.clone().url.clone().unwrap(),
-                        path.clone()).await.unwrap();
-                }
-                if content.url.is_some() && content.content_type.clone() == "ok_video"
-                    && content.url.clone().unwrap().contains("id") && content.player_urls.is_some() {
-                        let player_urls = content.player_urls.clone().unwrap();
-                        for player in player_urls {
-                            if player.content_type == "hd" || player.content_type == "full_hd" || player.content_type == "low" {
-                                utils::download_video(
-                                    player.clone().url, path.clone()).await.unwrap();
-                                break;
+    std::fs::create_dir_all(path.clone()).unwrap();    
+        
+    let image_futures: Vec<_> = response.iter().flat_map(|post| {
+        // Process data for paid or free posts
+        let data_futures: Vec<BoxedFuture> = post.data.as_ref().map_or_else(Vec::new, |data| {
+            data.iter().flat_map(|content| {
+                let mut futures: Vec<BoxedFuture> = Vec::new();
+
+                if let Some(url) = &content.url {
+                    println!("type {:?}", content.content_type);
+                    if url.starts_with("https://images.boosty.to/image/") {
+                        futures.push(Box::pin(utils::download_img_boosty(url.clone(), path.clone())));
+                    } else if content.content_type == "ok_video" {
+                        if let Some(player_urls) = &content.player_urls {
+                            if let Some(player) = player_urls.iter().find(|player| ["hd", "full_hd", "low"].contains(&player.content_type.as_str())) {
+                                futures.push(Box::pin(utils::download_video(player.url.clone(), path.clone())));
                             }
-                    } 
+                        }
+                    }
                 }
-            }
+
+                futures
+            }).collect()
+        });
+
+        // Process teaser data for paid posts
+        let teaser_futures: Vec<BoxedFuture> = post.teaser.iter().filter_map(|teaser| {
+            teaser.url.as_ref().map(|url| {
+                Box::pin(utils::download_img_boosty(url.clone(), path.clone())) as Pin<Box<dyn Future<Output = Result<(), utils::Error>> + Send>>
+            })
+        }).collect();
+
+        data_futures.into_iter().chain(teaser_futures.into_iter()).collect::<Vec<_>>()
+    }).collect();
+
+    join_all(image_futures).await.into_iter().for_each(|result| {
+        if let Err(e) = result {
+            eprintln!("Error occurred: {:?}", e);
         }
-        for teaser in &i.teaser { 
-            if teaser.url.is_some() {
-                utils::download_img_boosty(
-                    teaser.url.clone().unwrap(),
-                    path.clone()).await.unwrap();
-            }  
-        }
-    }
+    });
 }
