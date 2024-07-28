@@ -1,81 +1,25 @@
 use std::{error::Error, fs, path::Path};
+use clap::Parser;
+use cli::{Args, Commands};
 use imgdl_rs::boosty::auth::Auth;
 
-use futures::{future::join_all, stream::FuturesUnordered};
+use futures::future::join_all;
 use futures::Future;
 use std::pin::Pin;
 
-use clap::{Parser, Subcommand};
 use colored::Colorize;
 
 mod utils;
+mod cli;
 
 type BoxedFuture = Pin<Box<dyn Future<Output = Result<(), utils::Error>> + Send>>;
-
-#[derive(Parser)]
-#[command(author, version, about, long_about = None)]
-/// Args
-struct Args {
-    #[command(subcommand)]
-    cmd: Commands
-}
-
-/// Subcommands
-#[derive(Subcommand, Debug, Clone)]
-enum Commands {
-    /// Subcommand to download from boosty
-    Boosty {
-        #[arg(short, long)]
-        /// Boosty blog
-        blog: String,
-
-        #[arg(short, long)]
-        #[clap(default_value_t = String::from("img"))]
-        /// Path where images will be saved
-        path: String,
-
-        #[arg(short, long)]
-        /// Boosty access token
-        access_token: Option<String>,
-
-        #[arg(short, long)]
-        #[clap(default_value_t = 300)]
-        /// Set limit of maximum images to download
-        limit: i64,
-    },
-    /// Subcommand to download from Gelbooru
-    Gelbooru {
-        #[arg(short, long)]
-        #[clap(default_value_t = String::from("img"))]
-        /// Path where images will be saved
-        path: String,
-
-        #[arg(short, long)]
-        /// Gelbooru tags
-        tags: String,
-
-        #[arg(long)]
-        #[clap(default_value_t = 0)]
-        /// Page
-        page: i64,
-
-        #[arg(long)]
-        #[clap(default_value_t = false)]
-        /// Download images from all pages
-        all: bool,
-
-        #[arg(long)]
-        /// Proxy if Gelbooru is blocked in your country (SOCKS or HTTP)
-        proxy: Option<String>
-    }
-}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
     match args.cmd {
-        Commands::Boosty { blog, path, access_token, limit } => {
-            download_boosty(blog, path, access_token, limit).await;
+        Commands::Boosty { blog, path, access_token, limit, photo_only, video_only } => {
+            download_boosty(blog, path, access_token, limit, photo_only, video_only).await;
         },
         Commands::Gelbooru { path, tags, page, all, proxy } => {
             download_gelbooru(tags, page, path, all, proxy).await;
@@ -108,13 +52,13 @@ async fn download_gelbooru(tags: String, page: i64, path: String, all: bool, pro
     }
 }
 
-async fn download_boosty(blog: String, path: String, access_token: Option<String>, limit: i64) {
+async fn download_boosty(blog: String, path: String, access_token: Option<String>, limit: i64, photo_only: bool, video_only: bool) {
     let auth = access_token.map(Auth::new);
-    println!("Downloading all pictures from {} to {}", blog.purple(), path.green());
+    println!("Downloading content from {} to {}", blog.purple(), path.green());
     let response = imgdl_rs::boosty::request::Client::fetch_posts(
         blog.clone(), limit, auth.clone()).await.unwrap();
     println!("Total count: {}, limit: {}", response.len(), limit);
-
+    
     std::fs::create_dir_all(path.clone()).unwrap();    
         
     let image_futures: Vec<_> = response.iter().flat_map(|post| {
@@ -124,10 +68,9 @@ async fn download_boosty(blog: String, path: String, access_token: Option<String
                 let mut futures: Vec<BoxedFuture> = Vec::new();
 
                 if let Some(url) = &content.url {
-                    println!("type {:?}", content.content_type);
-                    if url.starts_with("https://images.boosty.to/image/") {
+                    if url.starts_with("https://images.boosty.to/image/") && !video_only {
                         futures.push(Box::pin(utils::download_img_boosty(url.clone(), path.clone())));
-                    } else if content.content_type == "ok_video" {
+                    } else if content.content_type == "ok_video" && !photo_only {
                         if let Some(player_urls) = &content.player_urls {
                             if let Some(player) = player_urls.iter().find(|player| ["hd", "full_hd", "low"].contains(&player.content_type.as_str())) {
                                 futures.push(Box::pin(utils::download_video(player.url.clone(), path.clone())));
@@ -140,12 +83,16 @@ async fn download_boosty(blog: String, path: String, access_token: Option<String
             }).collect()
         });
 
-        // Process teaser data for paid posts
-        let teaser_futures: Vec<BoxedFuture> = post.teaser.iter().filter_map(|teaser| {
-            teaser.url.as_ref().map(|url| {
-                Box::pin(utils::download_img_boosty(url.clone(), path.clone())) as Pin<Box<dyn Future<Output = Result<(), utils::Error>> + Send>>
-            })
-        }).collect();
+        // Process teaser data for paid posts only if !video_only
+        let teaser_futures: Vec<BoxedFuture> = if !video_only {
+            post.teaser.iter().filter_map(|teaser| {
+                teaser.url.as_ref().map(|url| {
+                    Box::pin(utils::download_img_boosty(url.clone(), path.clone())) as Pin<Box<dyn Future<Output = Result<(), utils::Error>> + Send>>
+                })
+            }).collect()
+        } else {
+            Vec::new()
+        };
 
         data_futures.into_iter().chain(teaser_futures.into_iter()).collect::<Vec<_>>()
     }).collect();
